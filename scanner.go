@@ -3,6 +3,7 @@ package nestedvirt
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"time"
 
@@ -13,9 +14,10 @@ import (
 
 // Scanner correlates KVM debugfs counters with process metadata.
 type Scanner struct {
-	kvmFS  kvm.FS
-	procFS procfs.FS
-	now    func() time.Time
+	kvmFS       kvm.FS
+	procFS      procfs.FS
+	procFSMount string
+	now         func() time.Time
 }
 
 type scannerConfig struct {
@@ -55,9 +57,10 @@ func NewScanner(opts ...Option) (*Scanner, error) {
 	}
 
 	return &Scanner{
-		kvmFS:  kvm.NewFS(dfs),
-		procFS: pfs,
-		now:    cfg.now,
+		kvmFS:       kvm.NewFS(dfs),
+		procFS:      pfs,
+		procFSMount: filepath.Clean(cfg.procfsMount),
+		now:         cfg.now,
 	}, nil
 }
 
@@ -154,6 +157,9 @@ func (s *Scanner) Scan(ctx context.Context) (Report, error) {
 
 		if inspected.Process.Kind == ProcessKindQEMU {
 			finding.VM = qemuVMIdentity(inspected.CommandLine)
+			sockets, socketErrors := s.discoverMonitorSockets(observed.pid)
+			finding.MonitorSockets = sockets
+			finding.Errors = append(finding.Errors, socketErrors...)
 		}
 
 		report.Findings = append(report.Findings, finding)
@@ -169,6 +175,7 @@ func (s *Scanner) Scan(ctx context.Context) (Report, error) {
 		switch finding.Process.Kind {
 		case ProcessKindQEMU:
 			report.Summary.QEMUProcesses++
+			report.Summary.MonitorSockets += len(finding.MonitorSockets)
 		case ProcessKindUnknown:
 			report.Summary.UnknownProcesses++
 		}

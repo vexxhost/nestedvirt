@@ -115,18 +115,19 @@ func writeText(w io.Writer, report nestedvirt.Report) error {
 	}
 
 	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	if _, err := fmt.Fprintln(table, "PID\tKIND\tPROCESS\tVM\tNESTED_RUNS"); err != nil {
+	if _, err := fmt.Fprintln(table, "PID\tKIND\tPROCESS\tVM\tMONITOR\tNESTED_RUNS"); err != nil {
 		return err
 	}
 
 	for _, finding := range report.Findings {
 		if _, err := fmt.Fprintf(
 			table,
-			"%d\t%s\t%s\t%s\t%d\n",
+			"%d\t%s\t%s\t%s\t%s\t%d\n",
 			finding.Process.PID,
 			finding.Process.Kind,
 			processName(finding.Process),
 			vmName(finding.VM),
+			monitorSocketName(finding.MonitorSockets),
 			finding.NestedRunCount,
 		); err != nil {
 			return err
@@ -152,6 +153,13 @@ func processName(process nestedvirt.Process) string {
 		return filepath.Base(process.Executable)
 	}
 	return "-"
+}
+
+func monitorSocketName(sockets []nestedvirt.MonitorSocket) string {
+	if len(sockets) == 0 {
+		return "-"
+	}
+	return sockets[0].Path
 }
 
 func vmName(vm *nestedvirt.VMIdentity) string {

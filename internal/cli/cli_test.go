@@ -18,6 +18,8 @@ func TestRunTextObserved(t *testing.T) {
 		exe:     "/usr/libexec/qemu-kvm",
 		cmdline: []string{"/usr/libexec/qemu-kvm", "-name", "guest=instance-0000002a", "-uuid", "11112222-3333-4444-5555-666677778888"},
 	})
+	writeSocketFD(t, procRoot, 2222, 12, 123456)
+	writeUnixSocket(t, procRoot, 123456, "/var/lib/libvirt/qemu/domain-7-instance/monitor.sock")
 
 	var stdout, stderr bytes.Buffer
 	code := Run(context.Background(), []string{"scan", "--debugfs", debugRoot, "--procfs", procRoot}, &stdout, &stderr)
@@ -29,6 +31,7 @@ func TestRunTextObserved(t *testing.T) {
 	for _, want := range []string{
 		"Nested virtualization usage observed",
 		"instance-0000002a",
+		"monitor.sock",
 		"requires nested virt: unknown",
 	} {
 		if !strings.Contains(out, want) {
@@ -45,6 +48,8 @@ func TestRunJSONObserved(t *testing.T) {
 		exe:     "/usr/libexec/qemu-kvm",
 		cmdline: []string{"/usr/libexec/qemu-kvm", "-name", "guest=instance-0000002a"},
 	})
+	writeSocketFD(t, procRoot, 2222, 12, 123456)
+	writeUnixSocket(t, procRoot, 123456, "/var/lib/libvirt/qemu/domain-7-instance/monitor.sock")
 
 	var stdout, stderr bytes.Buffer
 	code := Run(context.Background(), []string{"--debugfs", debugRoot, "--procfs", procRoot, "--json"}, &stdout, &stderr)
@@ -56,6 +61,9 @@ func TestRunJSONObserved(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), `"name": "instance-0000002a"`) {
 		t.Fatalf("JSON output missing VM name:\n%s", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), `"path": "/var/lib/libvirt/qemu/domain-7-instance/monitor.sock"`) {
+		t.Fatalf("JSON output missing monitor socket:\n%s", stdout.String())
 	}
 }
 
@@ -89,9 +97,10 @@ func testHostFilesystems(t *testing.T) (string, string) {
 	if err := os.MkdirAll(filepath.Join(debugRoot, "kvm"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(procRoot, 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(procRoot, "net"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	writeUnixSocketHeader(t, procRoot)
 
 	return debugRoot, procRoot
 }
@@ -124,6 +133,9 @@ func writeProc(t *testing.T, procRoot string, pid int, fixture procFixture) {
 	if err := os.Symlink(fixture.exe, filepath.Join(path, "exe")); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.MkdirAll(filepath.Join(path, "fd"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func joinNull(values []string) string {
@@ -133,4 +145,43 @@ func joinNull(values []string) string {
 		out = append(out, 0)
 	}
 	return string(out)
+}
+
+func writeSocketFD(t *testing.T, procRoot string, pid, fd int, inode uint64) {
+	t.Helper()
+
+	fdPath := filepath.Join(procRoot, strconv.Itoa(pid), "fd")
+	if err := os.MkdirAll(fdPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("socket:["+strconv.FormatUint(inode, 10)+"]", filepath.Join(fdPath, strconv.Itoa(fd))); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeUnixSocketHeader(t *testing.T, procRoot string) {
+	t.Helper()
+
+	path := filepath.Join(procRoot, "net", "unix")
+	header := "Num       RefCount Protocol Flags    Type St Inode Path\n"
+	if err := os.WriteFile(path, []byte(header), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeUnixSocket(t *testing.T, procRoot string, inode uint64, socketPath string) {
+	t.Helper()
+
+	path := filepath.Join(procRoot, "net", "unix")
+	line := "0000000000000000: 00000002 00000000 00010000 0001 01 " + strconv.FormatUint(inode, 10) + " " + socketPath + "\n"
+
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+
+	if _, err := file.WriteString(line); err != nil {
+		t.Fatal(err)
+	}
 }

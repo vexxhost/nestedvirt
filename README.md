@@ -5,6 +5,8 @@ Host-local detection for KVM guests that have used nested virtualization.
 The library reads KVM `nested_run` counters from debugfs, correlates non-zero
 counters with `/proc`, and identifies QEMU guests when their command line
 contains common libvirt/QEMU fields such as `-name guest=...` and `-uuid`.
+For QEMU processes, it also discovers likely monitor/QMP Unix sockets by
+joining `/proc/<pid>/fd` socket inodes with `/proc/net/unix`.
 
 The command line tool is intended for compute-host triage:
 

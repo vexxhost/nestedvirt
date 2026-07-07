@@ -41,6 +41,7 @@ type Summary struct {
 	ObservedProcesses  int  `json:"observed_processes"`
 	QEMUProcesses      int  `json:"qemu_processes"`
 	UnknownProcesses   int  `json:"unknown_processes"`
+	MonitorSockets     int  `json:"monitor_sockets"`
 	NestedVirtObserved bool `json:"nested_virt_observed"`
 }
 
@@ -48,6 +49,7 @@ type Summary struct {
 type Finding struct {
 	Process           Process            `json:"process"`
 	VM                *VMIdentity        `json:"vm,omitempty"`
+	MonitorSockets    []MonitorSocket    `json:"monitor_sockets,omitempty"`
 	NestedRunCount    uint64             `json:"nested_run_count"`
 	NestedRunCounters []NestedRunCounter `json:"nested_run_counters"`
 	Requirement       Requirement        `json:"requirement"`
@@ -67,6 +69,15 @@ type VMIdentity struct {
 	Name    string   `json:"name,omitempty"`
 	UUID    string   `json:"uuid,omitempty"`
 	Sources []string `json:"sources,omitempty"`
+}
+
+// MonitorSocket describes a Unix socket that looks like a QEMU monitor or QMP
+// endpoint for the process.
+type MonitorSocket struct {
+	FD     int    `json:"fd"`
+	Inode  uint64 `json:"inode"`
+	Path   string `json:"path"`
+	Source string `json:"source"`
 }
 
 // NestedRunCounter identifies one debugfs nested_run counter that contributed
