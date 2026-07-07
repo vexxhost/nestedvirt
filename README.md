@@ -20,49 +20,20 @@ nestedvirt scan
 nestedvirt scan --json
 ```
 
-To download the latest release, verify the checksum, extract it, and run a
-scan on a Linux compute host:
+To download the latest release, verify the checksum, extract it, and run a scan
+on a Linux compute host:
 
 ```sh
-set -euo pipefail
-
-repo="vexxhost/nestedvirt"
-
-arch="$(uname -m)"
-case "$arch" in
-  x86_64 | amd64) arch="amd64" ;;
-  aarch64 | arm64) arch="arm64" ;;
-  *)
-    echo "unsupported architecture: $arch" >&2
-    exit 1
-    ;;
-esac
-
-tag="$(curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)"
-if [ -z "$tag" ]; then
-  echo "could not determine latest release tag" >&2
-  exit 1
-fi
-
-version="${tag#v}"
-asset="nestedvirt_${version}_linux_${arch}.tar.gz"
-base="https://github.com/${repo}/releases/download/${tag}"
-tmp="$(mktemp -d)"
-trap 'rm -rf "$tmp"' EXIT
-
-curl -fsSL "${base}/${asset}" -o "${tmp}/${asset}"
-curl -fsSL "${base}/checksums.txt" -o "${tmp}/checksums.txt"
-
-(
-  cd "$tmp"
-  grep -F "  ${asset}" checksums.txt | sha256sum -c -
-  tar -xzf "$asset"
-  sudo ./nestedvirt scan
-)
+curl -fsSL https://raw.githubusercontent.com/vexxhost/nestedvirt/main/scripts/run-latest.sh | bash
 ```
 
-Use `sudo ./nestedvirt scan --json` in the last line for machine-readable
-output.
+Pass scanner flags after `bash -s --`; a leading flag implies `scan`:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/vexxhost/nestedvirt/main/scripts/run-latest.sh | bash -s -- --json
+```
+
+Set `NESTEDVIRT_TAG=v0.1.0` to pin a specific release.
 
 Exit codes:
 
