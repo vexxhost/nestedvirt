@@ -22,7 +22,7 @@ func TestRunTextObserved(t *testing.T) {
 	writeUnixSocket(t, procRoot, 123456, "/var/lib/libvirt/qemu/domain-7-instance/monitor.sock")
 
 	var stdout, stderr bytes.Buffer
-	code := Run(context.Background(), []string{"scan", "--debugfs", debugRoot, "--procfs", procRoot}, &stdout, &stderr)
+	code := Run(context.Background(), []string{"scan", "--debugfs", debugRoot, "--procfs", procRoot, "--libvirt-uri", ""}, &stdout, &stderr)
 	if code != ExitObserved {
 		t.Fatalf("Run() code = %d, want %d; stderr=%s", code, ExitObserved, stderr.String())
 	}
@@ -52,7 +52,7 @@ func TestRunJSONObserved(t *testing.T) {
 	writeUnixSocket(t, procRoot, 123456, "/var/lib/libvirt/qemu/domain-7-instance/monitor.sock")
 
 	var stdout, stderr bytes.Buffer
-	code := Run(context.Background(), []string{"--debugfs", debugRoot, "--procfs", procRoot, "--json"}, &stdout, &stderr)
+	code := Run(context.Background(), []string{"--debugfs", debugRoot, "--procfs", procRoot, "--libvirt-uri", "", "--json"}, &stdout, &stderr)
 	if code != ExitObserved {
 		t.Fatalf("Run() code = %d, want %d; stderr=%s", code, ExitObserved, stderr.String())
 	}
@@ -72,7 +72,7 @@ func TestRunNoObservation(t *testing.T) {
 	writeNestedRun(t, debugRoot, "2222-0", "0\n")
 
 	var stdout, stderr bytes.Buffer
-	code := Run(context.Background(), []string{"--debugfs", debugRoot, "--procfs", procRoot}, &stdout, &stderr)
+	code := Run(context.Background(), []string{"--debugfs", debugRoot, "--procfs", procRoot, "--libvirt-uri", ""}, &stdout, &stderr)
 	if code != ExitNoObservation {
 		t.Fatalf("Run() code = %d, want %d; stderr=%s", code, ExitNoObservation, stderr.String())
 	}

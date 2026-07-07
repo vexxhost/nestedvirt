@@ -11,6 +11,7 @@ import (
 )
 
 const monitorSocketSourceProc = "proc_fd_net_unix"
+const vmIdentitySourceMonitorSocket = "monitor_socket"
 
 func (s *Scanner) discoverMonitorSockets(pid int) ([]MonitorSocket, []FindingError) {
 	netUNIX, err := s.procFS.NetUNIX()
@@ -128,4 +129,29 @@ func deduplicateMonitorSockets(sockets []MonitorSocket) []MonitorSocket {
 	}
 
 	return deduped
+}
+
+func libvirtDomainNameFromMonitorSockets(sockets []MonitorSocket) string {
+	for _, socket := range sockets {
+		if name := libvirtDomainNameFromMonitorSocket(socket.Path); name != "" {
+			return name
+		}
+	}
+	return ""
+}
+
+func libvirtDomainNameFromMonitorSocket(path string) string {
+	const prefix = "domain-"
+
+	dir := filepath.Base(filepath.Dir(path))
+	if !strings.HasPrefix(dir, prefix) {
+		return ""
+	}
+
+	_, name, ok := strings.Cut(strings.TrimPrefix(dir, prefix), "-")
+	if !ok {
+		return ""
+	}
+
+	return strings.TrimSpace(name)
 }

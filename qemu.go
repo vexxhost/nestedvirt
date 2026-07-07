@@ -34,6 +34,18 @@ func qemuVMIdentity(args []string) *VMIdentity {
 	return &identity
 }
 
+func withVMName(identity *VMIdentity, name, source string) *VMIdentity {
+	if strings.TrimSpace(name) == "" {
+		return identity
+	}
+	if identity == nil {
+		identity = &VMIdentity{}
+	}
+
+	setIdentityValue(&identity.Name, name, &identity.Sources, source)
+	return identity
+}
+
 func qemuGuestName(value string) string {
 	if guest := qemuOptionValue(value, "guest"); guest != "" {
 		return guest

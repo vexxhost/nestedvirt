@@ -38,6 +38,7 @@ func TestScanFindsObservedQEMUVMs(t *testing.T) {
 	scanner, err := NewScanner(
 		WithDebugFSMount(debugRoot),
 		WithProcFSMount(procRoot),
+		WithLibvirtURI(""),
 		WithClock(func() time.Time { return time.Unix(100, 0) }),
 	)
 	if err != nil {
@@ -120,6 +121,7 @@ func TestScanNoObservation(t *testing.T) {
 		context.Background(),
 		WithDebugFSMount(debugRoot),
 		WithProcFSMount(procRoot),
+		WithLibvirtURI(""),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -145,6 +147,7 @@ func TestScanReportsProcessInspectionErrors(t *testing.T) {
 		context.Background(),
 		WithDebugFSMount(debugRoot),
 		WithProcFSMount(procRoot),
+		WithLibvirtURI(""),
 	)
 	if err != nil {
 		t.Fatal(err)

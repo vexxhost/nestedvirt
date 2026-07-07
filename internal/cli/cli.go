@@ -42,6 +42,7 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 
 	debugfsMount := flags.String("debugfs", debugfs.DefaultMountPoint, "debugfs mount point")
 	procfsMount := flags.String("procfs", "/proc", "procfs mount point")
+	libvirtURI := flags.String("libvirt-uri", "qemu:///system", "libvirt connection URI")
 	jsonOutput := flags.Bool("json", false, "write JSON output")
 
 	if err := flags.Parse(args); err != nil {
@@ -57,6 +58,7 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		ctx,
 		nestedvirt.WithDebugFSMount(*debugfsMount),
 		nestedvirt.WithProcFSMount(*procfsMount),
+		nestedvirt.WithLibvirtURI(*libvirtURI),
 	)
 	if err != nil {
 		fmt.Fprintf(stderr, "scan failed: %v\n", err)
@@ -115,18 +117,19 @@ func writeText(w io.Writer, report nestedvirt.Report) error {
 	}
 
 	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	if _, err := fmt.Fprintln(table, "PID\tKIND\tPROCESS\tVM\tMONITOR\tNESTED_RUNS"); err != nil {
+	if _, err := fmt.Fprintln(table, "PID\tKIND\tPROCESS\tVM\tNOVA\tMONITOR\tNESTED_RUNS"); err != nil {
 		return err
 	}
 
 	for _, finding := range report.Findings {
 		if _, err := fmt.Fprintf(
 			table,
-			"%d\t%s\t%s\t%s\t%s\t%d\n",
+			"%d\t%s\t%s\t%s\t%s\t%s\t%d\n",
 			finding.Process.PID,
 			finding.Process.Kind,
 			processName(finding.Process),
 			vmName(finding.VM),
+			novaName(finding.LibvirtDomain),
 			monitorSocketName(finding.MonitorSockets),
 			finding.NestedRunCount,
 		); err != nil {
@@ -176,4 +179,11 @@ func vmName(vm *nestedvirt.VMIdentity) string {
 		return vm.UUID
 	}
 	return "-"
+}
+
+func novaName(domain *nestedvirt.LibvirtDomain) string {
+	if domain == nil || domain.NovaMetadata == nil || domain.NovaMetadata.Name == "" {
+		return "-"
+	}
+	return domain.NovaMetadata.Name
 }

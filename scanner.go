@@ -17,12 +17,14 @@ type Scanner struct {
 	kvmFS       kvm.FS
 	procFS      procfs.FS
 	procFSMount string
+	libvirtURI  string
 	now         func() time.Time
 }
 
 type scannerConfig struct {
 	debugfsMount string
 	procfsMount  string
+	libvirtURI   string
 	debugfs      *debugfs.FS
 	procfs       *procfs.FS
 	now          func() time.Time
@@ -37,6 +39,7 @@ func NewScanner(opts ...Option) (*Scanner, error) {
 	cfg := scannerConfig{
 		debugfsMount: debugfs.DefaultMountPoint,
 		procfsMount:  "/proc",
+		libvirtURI:   "qemu:///system",
 		now:          func() time.Time { return time.Now().UTC() },
 	}
 
@@ -60,6 +63,7 @@ func NewScanner(opts ...Option) (*Scanner, error) {
 		kvmFS:       kvm.NewFS(dfs),
 		procFS:      pfs,
 		procFSMount: filepath.Clean(cfg.procfsMount),
+		libvirtURI:  cfg.libvirtURI,
 		now:         cfg.now,
 	}, nil
 }
@@ -94,6 +98,14 @@ func WithProcFSMount(mountPoint string) Option {
 func WithProcFS(fs procfs.FS) Option {
 	return func(cfg *scannerConfig) error {
 		cfg.procfs = &fs
+		return nil
+	}
+}
+
+// WithLibvirtURI configures the libvirt connection URI.
+func WithLibvirtURI(uri string) Option {
+	return func(cfg *scannerConfig) error {
+		cfg.libvirtURI = uri
 		return nil
 	}
 }
@@ -133,6 +145,9 @@ func (s *Scanner) Scan(ctx context.Context) (Report, error) {
 		},
 	}
 
+	var libvirtClient *libvirtClient
+	var libvirtErr error
+
 	for _, observed := range aggregateNestedRuns(runs) {
 		if err := ctx.Err(); err != nil {
 			return Report{}, err
@@ -160,6 +175,24 @@ func (s *Scanner) Scan(ctx context.Context) (Report, error) {
 			sockets, socketErrors := s.discoverMonitorSockets(observed.pid)
 			finding.MonitorSockets = sockets
 			finding.Errors = append(finding.Errors, socketErrors...)
+			finding.VM = withVMName(
+				finding.VM,
+				libvirtDomainNameFromMonitorSockets(finding.MonitorSockets),
+				vmIdentitySourceMonitorSocket,
+			)
+			if s.libvirtURI != "" && libvirtClient == nil && libvirtErr == nil {
+				libvirtClient, libvirtErr = openLibvirt(s.libvirtURI)
+				if libvirtClient != nil {
+					defer libvirtClient.Close()
+				}
+			}
+			if libvirtErr != nil {
+				finding.Errors = append(finding.Errors, processError(observed.pid, "libvirt_connect", libvirtErr))
+			} else if libvirtClient != nil {
+				domain, domainErrors := libvirtClient.Domain(finding.VM, observed.pid)
+				finding.LibvirtDomain = domain
+				finding.Errors = append(finding.Errors, domainErrors...)
+			}
 		}
 
 		report.Findings = append(report.Findings, finding)
@@ -176,6 +209,12 @@ func (s *Scanner) Scan(ctx context.Context) (Report, error) {
 		case ProcessKindQEMU:
 			report.Summary.QEMUProcesses++
 			report.Summary.MonitorSockets += len(finding.MonitorSockets)
+			if finding.LibvirtDomain != nil {
+				report.Summary.LibvirtDomains++
+				if finding.LibvirtDomain.NovaMetadata != nil {
+					report.Summary.LibvirtNovaMetadata++
+				}
+			}
 		case ProcessKindUnknown:
 			report.Summary.UnknownProcesses++
 		}

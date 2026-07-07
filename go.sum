@@ -6,3 +6,5 @@ github.com/vexxhost/debugfs v0.1.2 h1:Pu/3dQYDGtEZZsQbefdvW5BcmXaitAoY9OBfDghVMm
 github.com/vexxhost/debugfs v0.1.2/go.mod h1:puAesJjwuZwcDh7w1irqUG46C/bb4I6R7q9kmUWx5t8=
 golang.org/x/sys v0.46.0 h1:noSf2Fq6F8DBgS+LysIkx7rIExoNHJsxOAtPp4rthXw=
 golang.org/x/sys v0.46.0/go.mod h1:4GL1E5IUh+htKOUEOaiffhrAeqysfVGipDYzABqnCmw=
+libvirt.org/go/libvirt v1.12005.0 h1:YKHw7kpDu5OXyK1FKzgSfMCXkcQuEnpr7aFGcjs+7pU=
+libvirt.org/go/libvirt v1.12005.0/go.mod h1:1WiFE8EjZfq+FCVog+rvr1yatKbKZ9FaFMZgEqxEJqQ=
