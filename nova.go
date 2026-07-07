@@ -56,7 +56,6 @@ func parseNovaMetadata(raw string) (*NovaMetadata, error) {
 		Hostname:       strings.TrimSpace(instance.Hostname),
 		CreationTime:   strings.TrimSpace(instance.CreationTime),
 		PackageVersion: strings.TrimSpace(instance.Package.Version),
-		RawXML:         raw,
 	}
 
 	if hasNovaFlavor(instance.Flavor) {

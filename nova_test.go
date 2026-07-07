@@ -54,7 +54,4 @@ func TestParseNovaMetadata(t *testing.T) {
 	if got.Root == nil || got.Root.Type != "image" || got.Root.UUID != "image-uuid" {
 		t.Fatalf("Root = %#v, want parsed image root", got.Root)
 	}
-	if got.RawXML != raw {
-		t.Fatal("RawXML was not preserved")
-	}
 }

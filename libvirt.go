@@ -1,16 +1,19 @@
 package nestedvirt
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/url"
+	"strings"
 
-	libvirt "libvirt.org/go/libvirt"
+	libvirt "github.com/digitalocean/go-libvirt"
 )
 
 const novaMetadataNamespace = "http://openstack.org/xmlns/libvirt/nova/1.1"
 
 type libvirtClient struct {
-	conn *libvirt.Connect
+	conn *libvirt.Libvirt
 }
 
 func openLibvirt(uri string) (*libvirtClient, error) {
@@ -18,7 +21,12 @@ func openLibvirt(uri string) (*libvirtClient, error) {
 		return nil, fmt.Errorf("libvirt URI: empty")
 	}
 
-	conn, err := libvirt.NewConnect(uri)
+	parsed, err := url.Parse(uri)
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := libvirt.ConnectToURI(parsed)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +39,7 @@ func (c *libvirtClient) Close() error {
 		return nil
 	}
 
-	_, err := c.conn.Close()
-	return err
+	return c.conn.Disconnect()
 }
 
 func (c *libvirtClient) Domain(vm *VMIdentity, pid int) (*LibvirtDomain, []FindingError) {
@@ -44,23 +51,18 @@ func (c *libvirtClient) Domain(vm *VMIdentity, pid int) (*LibvirtDomain, []Findi
 	if err != nil {
 		return nil, []FindingError{processError(pid, "libvirt_lookup_domain", err)}
 	}
-	defer domain.Free()
 
-	result := &LibvirtDomain{}
-
-	name, err := domain.GetName()
-	if err != nil {
-		return result, []FindingError{processError(pid, "libvirt_domain_name", err)}
+	result := &LibvirtDomain{
+		Name: domain.Name,
+		UUID: formatLibvirtUUID(domain.UUID),
 	}
-	result.Name = name
 
-	uuid, err := domain.GetUUIDString()
-	if err != nil {
-		return result, []FindingError{processError(pid, "libvirt_domain_uuid", err)}
-	}
-	result.UUID = uuid
-
-	metadata, err := domain.GetMetadata(libvirt.DOMAIN_METADATA_ELEMENT, novaMetadataNamespace, libvirt.DOMAIN_AFFECT_CURRENT)
+	metadata, err := c.conn.DomainGetMetadata(
+		*domain,
+		int32(libvirt.DomainMetadataElement),
+		libvirt.OptString{novaMetadataNamespace},
+		libvirt.DomainAffectCurrent,
+	)
 	if err == nil {
 		nova, parseErr := parseNovaMetadata(metadata)
 		if parseErr != nil {
@@ -81,19 +83,26 @@ func (c *libvirtClient) lookupDomain(vm *VMIdentity) (*libvirt.Domain, error) {
 	var errs []error
 
 	if vm.UUID != "" {
-		domain, err := c.conn.LookupDomainByUUIDString(vm.UUID)
-		if err == nil {
-			return domain, nil
+		uuid, err := parseLibvirtUUID(vm.UUID)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("uuid %q: %w", vm.UUID, err))
+		} else if domain, err := c.conn.DomainLookupByUUID(uuid); err == nil {
+			return &domain, nil
+		} else {
+			errs = append(errs, fmt.Errorf("uuid %q: %w", vm.UUID, err))
 		}
-		errs = append(errs, fmt.Errorf("uuid %q: %w", vm.UUID, err))
 	}
 
 	if vm.Name != "" {
-		domain, err := c.conn.LookupDomainByName(vm.Name)
+		domain, err := c.conn.DomainLookupByName(vm.Name)
 		if err == nil {
-			return domain, nil
+			return &domain, nil
 		}
 		errs = append(errs, fmt.Errorf("name %q: %w", vm.Name, err))
+	}
+
+	if len(errs) == 0 {
+		errs = append(errs, fmt.Errorf("missing libvirt domain identity"))
 	}
 
 	return nil, errors.Join(errs...)
@@ -102,7 +111,32 @@ func (c *libvirtClient) lookupDomain(vm *VMIdentity) (*libvirt.Domain, error) {
 func isNoDomainMetadata(err error) bool {
 	var libvirtErr libvirt.Error
 	if errors.As(err, &libvirtErr) {
-		return libvirtErr.Code == libvirt.ERR_NO_DOMAIN_METADATA
+		return libvirtErr.Code == uint32(libvirt.ErrNoDomainMetadata)
 	}
 	return false
+}
+
+func parseLibvirtUUID(value string) (libvirt.UUID, error) {
+	var uuid libvirt.UUID
+
+	normalized := strings.ReplaceAll(strings.TrimSpace(value), "-", "")
+	decoded, err := hex.DecodeString(normalized)
+	if err != nil {
+		return uuid, err
+	}
+	if len(decoded) != len(uuid) {
+		return uuid, fmt.Errorf("invalid UUID length %d", len(decoded))
+	}
+
+	copy(uuid[:], decoded)
+	return uuid, nil
+}
+
+func formatLibvirtUUID(uuid libvirt.UUID) string {
+	encoded := hex.EncodeToString(uuid[:])
+	return encoded[0:8] + "-" +
+		encoded[8:12] + "-" +
+		encoded[12:16] + "-" +
+		encoded[16:20] + "-" +
+		encoded[20:32]
 }

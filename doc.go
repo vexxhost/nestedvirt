@@ -7,7 +7,8 @@
 // extracts common libvirt/QEMU identity fields such as the guest name and UUID,
 // and discovers likely QMP monitor sockets by joining the process fd table with
 // /proc/net/unix. It also connects to libvirt through qemu:///system by default
-// and enriches findings with domain identity and Nova metadata when available.
+// using the pure-Go libvirt RPC protocol and enriches findings with domain
+// identity and Nova metadata when available.
 //
 // A scan reports observed nested virtualization use. It does not prove that a
 // guest permanently requires nested virtualization, but a non-zero counter is a

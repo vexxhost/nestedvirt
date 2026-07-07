@@ -101,7 +101,6 @@ type NovaMetadata struct {
 	Flavor         *NovaFlavor `json:"flavor,omitempty"`
 	Owner          *NovaOwner  `json:"owner,omitempty"`
 	Root           *NovaRoot   `json:"root,omitempty"`
-	RawXML         string      `json:"raw_xml,omitempty"`
 }
 
 // NovaFlavor describes flavor fields Nova stores in libvirt metadata.

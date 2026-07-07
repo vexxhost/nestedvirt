@@ -8,9 +8,10 @@ contains common libvirt/QEMU fields such as `-name guest=...` and `-uuid`.
 For QEMU processes, it also discovers likely monitor/QMP Unix sockets by
 joining `/proc/<pid>/fd` socket inodes with `/proc/net/unix`.
 
-The normal build includes libvirt support. The scanner connects to
+The normal build includes pure-Go libvirt RPC support. The scanner connects to
 `qemu:///system` by default and enriches QEMU findings with libvirt domain
-identity and OpenStack Nova metadata when the metadata is present.
+identity and OpenStack Nova metadata when the metadata is present. It does not
+link against `libvirt.so`.
 
 The command line tool is intended for compute-host triage:
 
