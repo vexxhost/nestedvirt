@@ -81,6 +81,30 @@ func TestRunNoObservation(t *testing.T) {
 	}
 }
 
+func TestRunVersion(t *testing.T) {
+	oldVersion := version
+	defer func() { version = oldVersion }()
+
+	SetVersion(Version{
+		Version: "v1.2.3",
+		Commit:  "abc123",
+		Date:    "2026-07-07T00:00:00Z",
+	})
+
+	var stdout, stderr bytes.Buffer
+	code := Run(context.Background(), []string{"version"}, &stdout, &stderr)
+	if code != ExitNoObservation {
+		t.Fatalf("Run() code = %d, want %d; stderr=%s", code, ExitNoObservation, stderr.String())
+	}
+
+	out := stdout.String()
+	for _, want := range []string{"nestedvirt v1.2.3", "commit: abc123", "built: 2026-07-07T00:00:00Z"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("stdout missing %q:\n%s", want, out)
+		}
+	}
+}
+
 type procFixture struct {
 	comm    string
 	exe     string

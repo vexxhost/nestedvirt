@@ -13,6 +13,19 @@ import (
 	"github.com/vexxhost/nestedvirt"
 )
 
+// Version contains build metadata for the CLI.
+type Version struct {
+	Version string
+	Commit  string
+	Date    string
+}
+
+var version = Version{
+	Version: "dev",
+	Commit:  "none",
+	Date:    "unknown",
+}
+
 const (
 	// ExitNoObservation means the scan completed and no nested virtualization
 	// usage was observed.
@@ -26,6 +39,19 @@ const (
 	ExitError = 2
 )
 
+// SetVersion sets build metadata displayed by the version command.
+func SetVersion(info Version) {
+	if info.Version != "" {
+		version.Version = info.Version
+	}
+	if info.Commit != "" {
+		version.Commit = info.Commit
+	}
+	if info.Date != "" {
+		version.Date = info.Date
+	}
+}
+
 // Run executes the nestedvirt CLI.
 func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if stdout == nil {
@@ -36,6 +62,10 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	}
 
 	args = trimScanCommand(args)
+	if isVersionCommand(args) {
+		writeVersion(stdout)
+		return ExitNoObservation
+	}
 
 	flags := flag.NewFlagSet("nestedvirt scan", flag.ContinueOnError)
 	flags.SetOutput(stderr)
@@ -89,6 +119,14 @@ func trimScanCommand(args []string) []string {
 		return args[1:]
 	}
 	return args
+}
+
+func isVersionCommand(args []string) bool {
+	return len(args) == 1 && (args[0] == "version" || args[0] == "--version" || args[0] == "-version")
+}
+
+func writeVersion(w io.Writer) {
+	fmt.Fprintf(w, "nestedvirt %s\ncommit: %s\nbuilt: %s\n", version.Version, version.Commit, version.Date)
 }
 
 func writeJSON(w io.Writer, report nestedvirt.Report) error {
