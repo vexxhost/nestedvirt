@@ -143,7 +143,13 @@ func writeText(w io.Writer, report nestedvirt.Report) error {
 		if _, err := fmt.Fprintln(w); err != nil {
 			return err
 		}
-		_, err := fmt.Fprintln(w, "Final result: nested virt requirement: no evidence observed.")
+		if _, err := fmt.Fprintln(w, "Assessment:"); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintln(w, "Evidence: all observed KVM nested_run counters are zero."); err != nil {
+			return err
+		}
+		_, err := fmt.Fprintln(w, "Risk: no VM in this scan showed evidence that nested virtualization is required.")
 		return err
 	}
 
@@ -182,7 +188,13 @@ func writeText(w io.Writer, report nestedvirt.Report) error {
 	if _, err := fmt.Fprintln(w); err != nil {
 		return err
 	}
-	_, err := fmt.Fprintln(w, "Final result: nested virt requirement: unknown; usage was observed, so disabling nested virt may break these VMs.")
+	if _, err := fmt.Fprintln(w, "Assessment:"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w, "Evidence: one or more VMs have used nested virtualization."); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintln(w, "Risk: disabling nested virtualization may break the VMs listed above.")
 	return err
 }
 

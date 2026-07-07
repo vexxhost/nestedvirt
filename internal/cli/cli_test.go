@@ -32,7 +32,8 @@ func TestRunTextObserved(t *testing.T) {
 		"Nested virtualization usage observed",
 		"instance-0000002a",
 		"monitor.sock",
-		"nested virt requirement: unknown",
+		"Evidence: one or more VMs have used nested virtualization.",
+		"Risk: disabling nested virtualization may break the VMs listed above.",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("stdout missing %q:\n%s", want, out)
@@ -76,8 +77,14 @@ func TestRunNoObservation(t *testing.T) {
 	if code != ExitNoObservation {
 		t.Fatalf("Run() code = %d, want %d; stderr=%s", code, ExitNoObservation, stderr.String())
 	}
-	if !strings.Contains(stdout.String(), "nested virt requirement: no evidence observed") {
-		t.Fatalf("stdout missing final result:\n%s", stdout.String())
+	for _, want := range []string{
+		"Assessment:",
+		"Evidence: all observed KVM nested_run counters are zero.",
+		"Risk: no VM in this scan showed evidence that nested virtualization is required.",
+	} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout missing %q:\n%s", want, stdout.String())
+		}
 	}
 }
 
