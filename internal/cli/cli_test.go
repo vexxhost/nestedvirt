@@ -32,7 +32,7 @@ func TestRunTextObserved(t *testing.T) {
 		"Nested virtualization usage observed",
 		"instance-0000002a",
 		"monitor.sock",
-		"requires nested virt: unknown",
+		"nested virt requirement: unknown",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("stdout missing %q:\n%s", want, out)
@@ -76,7 +76,7 @@ func TestRunNoObservation(t *testing.T) {
 	if code != ExitNoObservation {
 		t.Fatalf("Run() code = %d, want %d; stderr=%s", code, ExitNoObservation, stderr.String())
 	}
-	if !strings.Contains(stdout.String(), "requires nested virt: no observed evidence") {
+	if !strings.Contains(stdout.String(), "nested virt requirement: no evidence observed") {
 		t.Fatalf("stdout missing final result:\n%s", stdout.String())
 	}
 }

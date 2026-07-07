@@ -143,7 +143,7 @@ func writeText(w io.Writer, report nestedvirt.Report) error {
 		if _, err := fmt.Fprintln(w); err != nil {
 			return err
 		}
-		_, err := fmt.Fprintln(w, "Final result: requires nested virt: no observed evidence.")
+		_, err := fmt.Fprintln(w, "Final result: nested virt requirement: no evidence observed.")
 		return err
 	}
 
@@ -182,7 +182,7 @@ func writeText(w io.Writer, report nestedvirt.Report) error {
 	if _, err := fmt.Fprintln(w); err != nil {
 		return err
 	}
-	_, err := fmt.Fprintln(w, "Final result: requires nested virt: unknown; usage was observed, so disabling nested virt may break these VMs.")
+	_, err := fmt.Fprintln(w, "Final result: nested virt requirement: unknown; usage was observed, so disabling nested virt may break these VMs.")
 	return err
 }
 
